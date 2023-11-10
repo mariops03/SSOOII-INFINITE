@@ -3,10 +3,31 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <signal.h>
+
+pid_t hijos[4]; // Arreglo para mantener los PIDs de los hijos
+
+void sigalrm_handler(int signum) {
+    for (int i = 0; i < 4; i++) {
+        if (hijos[i] > 0) {
+            kill(hijos[i], SIGKILL);
+        }
+    }
+}
 
 int main() {
-    pid_t hijos[4]; // Un arreglo para mantener los PIDs de los cuatro hijos
+    struct sigaction sa;
+    sa.sa_handler = sigalrm_handler;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
 
+    // Configura el manejador de señales SIGALRM
+    if (sigaction(SIGALRM, &sa, NULL) == -1) {
+        perror("Error al configurar el manejador de señales");
+        exit(1);
+    }
+
+    pid_t padre = getpid();
     // Crear cuatro hijos
     for (int i = 0; i < 4; i++) {
         hijos[i] = fork();
@@ -20,50 +41,39 @@ int main() {
             // Este código se ejecuta en el hijo
             printf("H%d con PID %d\n", i + 1, getpid());
 
-            // Usar un switch para determinar si el hijo es H2 o H3 y crear nietos
-            switch (i) {
-                case 1:
-                    // Código para el hijo H2
-                    {
-                        pid_t nieto2 = fork();
-                        if (nieto2 == -1) {
-                            perror("Error al crear el nieto 2");
-                            exit(1);
-                        }
-                        if (nieto2 == 0) {
-                            // Este código se ejecuta en el nieto 2 (n2)
-                            printf("Nieto 1 (N2) con PID %d\n", getpid());
-                            exit(0);
-                        }
-                    }
-                    break;
-                case 2:
-                    // Código para el hijo H3
-                    {
-                        pid_t nieto3 = fork();
-                        if (nieto3 == -1) {
-                            perror("Error al crear el nieto 3");
-                            exit(1);
-                        }
-                        if (nieto3 == 0) {
-                            // Este código se ejecuta en el nieto 3 (n3)
-                            printf("Nieto 2 (N3) con PID %d\n", getpid());
-                            exit(0);
-                        }
-                    }
-                    break;
-                default:
-                    break;
+            // Si el hijo es H2 o H3, crear nietos
+            if (i == 1 || i == 2) {
+                pid_t nieto = fork();
+                if (nieto == -1) {
+                    perror("Error al crear el nieto");
+                    exit(1);
+                }
+                if (nieto == 0) {
+                    printf("Nieto con PID %d\n", getpid());
+                    // El nieto se duerme
+                    int status;
+                    waitpid(getppid(), &status, 0);
+                    waitpid(getpid(), &status, 0);
+                }
+            } else {
+                // Si el hijo no tiene nietos, se duerme
+                int status;
+                waitpid(getpid(), &status, 0);
             }
-
-            exit(0);
         }
     }
 
-    // El código a continuación se ejecuta solo en el proceso padre
+    // Configura la alarma para activar SIGALRM después de 5 segundos solo si es el padre
+    if (getpid() == padre) {
+        alarm(5);
+        for (int i = 0; i < 2; i++) {
+            kill(hijos[i], SIGALRM); // Despierta a los hijos
+        }
+    }
+
+    // Esperar a que todos los procesos hijos terminen
     for (int i = 0; i < 4; i++) {
-        int status;
-        waitpid(hijos[i], &status, 0);
+        wait(NULL);
     }
 
     return 0;
