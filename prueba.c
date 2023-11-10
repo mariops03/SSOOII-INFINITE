@@ -84,11 +84,8 @@ int main() {
                 if (fork() == 0) {
                     printf("Soy el proceso nieto %d de H%d\n", getpid(), i + 1);
                     nuevosleep(25);
-                    exit(0);
                 }
             }
-
-            exit(0);
         }
     }
 
