@@ -29,6 +29,7 @@ int main() {
             perror("Error al crear el proceso hijo");
             exit(EXIT_FAILURE);
         }
+    }
 
         // Código que se ejecutará en el proceso hijo
         if (child_pid == 0) {
