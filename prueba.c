@@ -70,7 +70,7 @@ int main() {
     sigaction(SIGCHLD, &accion_nieto, NULL);
 
     // Configurar alarma para 25 segundos en el proceso padre
-    alarm(25);
+    
 
     // Crear procesos hijos
     for (int i = 0; i < 3; i++) {
@@ -88,7 +88,8 @@ int main() {
             }
         }
     }
-
+    
+    alarm(25);
     // Esperar a que todos los nietos terminen
     while (contador_nietos_terminados < 6) {
         sleep(1); // Esperar un segundo antes de revisar nuevamente
