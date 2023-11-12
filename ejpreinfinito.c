@@ -9,7 +9,7 @@
 
 sigset_t maskPadre;
 sigset_t maskTestigo;
-
+int pidDisparo;
 //mascara que bloquee todo menos SIGINT
 void mascarabloqueo(){
 
@@ -26,12 +26,13 @@ void mascaratestigo(){
     //tendremos que manejar SIGALARM (de momento no)
     sigprocmask(SIG_SETMASK,&maskTestigo,NULL);  // activamos la mascara
 }
-void funcionTestigo(pid_t pidpasado){
+void funcionTestigo(){
+    //printf("PID pasado: %d\n",pidpasado);
     while(1){
-        printf("Le paso el testigo a %d\n",pidpasado);
-
-        kill(pidpasado,SIGUSR1);
+        kill(pidDisparo,SIGUSR1);
+        //printf("disparo\n");
         sigsuspend(&maskTestigo);
+       // printf("NO ESTA BLOQUEADO\n");
     }
 }
 
@@ -45,22 +46,25 @@ void manejadoraTestigo(){
 }
 
 void codigohijo(pid_t pidpadre) {
-    sigsuspend(&maskTestigo);
     printf("MAscara del juego ACTIVADA\n");
-    while (1) {
-        funcionTestigo(pidpadre); //le pasamos el pid del padre
-    }
+    sigsuspend(&maskTestigo);
+    //printf("PidPADRE: %d\n",pidpadre);
+    pidDisparo = pidpadre;
+    printf("PID disparo: %d\n",pidDisparo); 
+    funcionTestigo(); //le pasamos el pid del padre
+
 }
 
 void codigopadre(pid_t pidhijo) {
     printf("Soy el padre y empiezo el juego de testigos\n");
-    while (1) {
-        funcionTestigo(pidhijo); //le pasamos el pid del hijo
-    }
+    pidDisparo = pidhijo;
+    printf("PID disparo: %d\n",pidDisparo); 
+    funcionTestigo(); //le pasamos el pid del hijo
 }
 
 int main() {
     mascarabloqueo(); //Inicialmente esta mascara
+    manejadoraTestigo(); //manejadora de SIGUSR1
     pid_t pid = fork();
     //aqui el hijo ya esta creado
     if (pid == -1) {
@@ -70,6 +74,8 @@ int main() {
     //pause(); //lo use para comprobar que estaba ya creado el hijo y funcionaba la mascara
     if (pid > 0) {
         // Código del proceso padre
+        printf("PIDPADRE: %d\n",getpid());
+        printf("PIDHIJO: %d\n",pid);
         codigopadre(pid);
     } else if (pid == 0) {
         // Código del proceso hijo
