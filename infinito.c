@@ -1,88 +1,70 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <signal.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 
-// Variable global para indicar que se ha presionado Ctrl+C
-int ctrl_c_pressed = 0;
-
-// Manejador de señales para Ctrl+C
-void ctrl_c_handler(int signo) {
-    if (signo == SIGINT) {
-        ctrl_c_pressed = 1;
-    }
-}
-
 int main() {
-    int i;
+    pid_t hijos[4]; // Un arreglo para mantener los PIDs de los cuatro hijos
 
-    // Configurar el manejador de señales para Ctrl+C
-    signal(SIGINT, ctrl_c_handler);
+    // Crear cuatro hijos
+    for (int i = 0; i < 4; i++) {
+        hijos[i] = fork();
 
-    // Crear 4 hijos
-    for (i = 0; i < 4; i++) {
-        pid_t child_pid = fork();
-
-        // Verificar si hubo un error en la creación del proceso hijo
-        if (child_pid == -1) {
-            perror("Error al crear el proceso hijo");
-            exit(EXIT_FAILURE);
+        if (hijos[i] == -1) {
+            perror("Error al crear un hijo");
+            exit(1);
         }
-    }
 
-        // Código que se ejecutará en el proceso hijo
-        if (child_pid == 0) {
-            printf("Soy el hijo %d con PID %d. Mi padre es %d.\n", i + 1, getpid(), getppid());
+        if (hijos[i] == 0) {
+            // Este código se ejecuta en el hijo
+            printf("H%d con PID %d\n", i + 1, getpid());
 
-            // Si es el hijo H2 o H3, crear un hijo adicional
-            if ((i == 1 || i == 2) && !ctrl_c_pressed) {
-                pid_t grandchild_pid = fork();
-
-                // Verificar si hubo un error en la creación del nieto
-                if (grandchild_pid == -1) {
-                    perror("Error al crear el nieto");
-                    exit(EXIT_FAILURE);
-                }
-
-                // Código que se ejecutará en el nieto
-                if (grandchild_pid == 0) {
-                    printf("Soy el nieto de %d con PID %d. Mi padre es %d.\n", getpid(), getpid(), getppid());
-
-                    // Bucle infinito hasta que se haga Ctrl+C
-                    while (!ctrl_c_pressed) {
-                        sleep(1);
+            // Usar un switch para determinar si el hijo es H2 o H3 y crear nietos
+            switch (i) {
+                case 1:
+                    // Código para el hijo H2
+                    {
+                        pid_t nieto2 = fork();
+                        if (nieto2 == -1) {
+                            perror("Error al crear el nieto 2");
+                            exit(1);
+                        }
+                        if (nieto2 == 0) {
+                            // Este código se ejecuta en el nieto 2 (n2)
+                            printf("Nieto 1 (N2) con PID %d\n", getpid());
+                            exit(0);
+                        }
                     }
-
-                    printf("El nieto con PID %d ha terminado.\n", getpid());
-                    exit(EXIT_SUCCESS);
-                }
-
-                // El proceso hijo (H2 o H3) espera a que su hijo (nieto) termine
-                wait(NULL);
+                    break;
+                case 2:
+                    // Código para el hijo H3
+                    {
+                        pid_t nieto3 = fork();
+                        if (nieto3 == -1) {
+                            perror("Error al crear el nieto 3");
+                            exit(1);
+                        }
+                        if (nieto3 == 0) {
+                            // Este código se ejecuta en el nieto 3 (n3)
+                            printf("Nieto 2 (N3) con PID %d\n", getpid());
+                            exit(0);
+                        }
+                    }
+                    break;
+                default:
+                    break;
             }
 
-            // Bucle infinito hasta que se haga Ctrl+C
-            while (!ctrl_c_pressed) {
-                sleep(1);
-            }
-
-            printf("El hijo con PID %d ha terminado.\n", getpid());
-            exit(EXIT_SUCCESS);
+            exit(0);
         }
     }
 
-    // El proceso padre espera a que se presione Ctrl+C
-    while (!ctrl_c_pressed) {
-        sleep(1);
+    // El código a continuación se ejecuta solo en el proceso padre
+    for (int i = 0; i < 4; i++) {
+        int status;
+        waitpid(hijos[i], &status, 0);
     }
-
-    // El proceso padre espera a que todos los hijos terminen
-    for (i = 0; i < 4; i++) {
-        wait(NULL);
-    }
-
-    printf("El proceso padre ha terminado.\n");
 
     return 0;
 }
