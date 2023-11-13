@@ -63,8 +63,7 @@ int main() {
         /* Child H1 code goes here */
         pidDisparo = getppid();
         while(1){
-            sigsuspend(&maskTestigo);
-            kill(pidDisparo,SIGUSR1);
+           sigsuspend(&maskTestigo);
 
         }
     } else if (H2 == 0) {
@@ -74,7 +73,6 @@ int main() {
             pidDisparo = H1;
             while(1){
                 sigsuspend(&maskTestigo);
-                kill(pidDisparo,SIGUSR1);
 
             }
         } else {
@@ -82,7 +80,6 @@ int main() {
             pidDisparo = N2;
             while(1){
                 sigsuspend(&maskTestigo);
-                kill(pidDisparo,SIGUSR1);
 
             }
         }
