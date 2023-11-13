@@ -7,6 +7,7 @@
 #include <string.h>
 
 pid_t H1, H2, N2;
+pid_t pidpadre;
 sigset_t maskPadre;
 sigset_t maskTestigo;
 int pidDisparo;
@@ -14,7 +15,6 @@ struct sigaction manejadoraT;
 struct sigaction manejadoraA;
 pid_t pid;
 int contador=0;
-
 void mascarabloqueo(){
 
     sigfillset(&maskPadre); //cargamos la mascara con todas las señales
@@ -35,10 +35,6 @@ void funcionTestigo(){
     //exit(0);
 
 }
-void set_process_name(const char* name) {
-    prctl(PR_SET_NAME, name, NULL, NULL, NULL);
-    printf("Nombre del proceso cambiado a %s\n", name);
-}
 
 void process_code(const char* name) {
     printf("Soy el proceso %s con PID %d\n", name, getpid());
@@ -56,53 +52,49 @@ void manejadoraTestigo(){
 int main() {
     mascarabloqueo();
     mascaratestigo();
+    manejadoraTestigo();
     sigprocmask(SIG_SETMASK,&maskPadre,NULL);  // activamos la mascara y la hereda el hijo
 
-   //EL padre tiene tiene de hijo a H1
-    H1=fork();
-    if(H1 > 0){
-        //COdigo del padre
-        //El padre tiene de hijo a H2
-         H2=fork();
-         
-        //H2 tiene de hijo a N2
-        if(H2 >0){
-            //Codigo de H2
-            set_process_name("H2");
-            sigprocmask(SIG_SETMASK,&maskTestigo,NULL);  
-            pidDisparo = N2;
-            while(1){
-                sigsuspend(&maskTestigo);
-                printf("Disparo a N2\n");
-                kill(pidDisparo,SIGUSR1);
-                
-            }
-        }
-        if(H2 == 0){
-            //Codigo de N2
-            set_process_name("N2");
-            pidDisparo = H1;
-            while(1){
-                sigsuspend(&maskTestigo);
-                printf("Disparo a H1\n");
-                kill(pidDisparo,SIGUSR1);
-                
-            }
-        }
+    //creamos a H1 y H2 a la vez
+    
+    (H1 = fork()) && (H2 = fork()); // Creates two children
 
-
-    }
-    if(H1 == 0){
-        //Codigo de H1
-        set_process_name("H1");
-        sigprocmask(SIG_SETMASK,&maskTestigo,NULL);  
-        //disparo al padre
+    if (H1 == 0) {
+        /* Child H1 code goes here */
         pidDisparo = getppid();
         while(1){
             sigsuspend(&maskTestigo);
-            printf("Disparo al padre\n");
             kill(pidDisparo,SIGUSR1);
 
+        }
+    } else if (H2 == 0) {
+        N2 = fork();
+        if (N2 == 0) {
+            /* Grandchild N2 code goes here */
+            pidDisparo = H1;
+            while(1){
+                sigsuspend(&maskTestigo);
+                kill(pidDisparo,SIGUSR1);
+
+            }
+        } else {
+            /* Child H2 code goes here */
+            pidDisparo = N2;
+            while(1){
+                sigsuspend(&maskTestigo);
+                kill(pidDisparo,SIGUSR1);
+
+            }
+        }
+    } else {
+        /* Parent code goes here */
+        pidDisparo = H2;
+        while(1){
+           // printf("Vuelta: %d\n",contador++);
+            printf("PID disparo: %d\n",pidDisparo);
+           // printf("VUELTA: %d\n",contador++);
+            kill(pidDisparo,SIGUSR1);
+            sigsuspend(&maskTestigo);
         }
     }
 }
