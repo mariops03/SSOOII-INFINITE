@@ -10,12 +10,16 @@
 sigset_t maskPadre;
 sigset_t maskTestigo;
 int pidDisparo;
+struct sigaction manejadoraT;
+struct sigaction manejadoraA;
+pid_t pid;
+int contador=0;
 //mascara que bloquee todo menos SIGINT
 void mascarabloqueo(){
 
     sigfillset(&maskPadre); //cargamos la mascara con todas las señales
     sigdelset(&maskPadre,SIGINT); //quitamos SIGINT
-    sigprocmask(SIG_SETMASK,&maskPadre,NULL);  // activamos la mascara
+   // sigprocmask(SIG_SETMASK,&maskPadre,NULL);  // activamos la mascara
 }
 //mascara para pasar el testigo
 void mascaratestigo(){
@@ -23,50 +27,81 @@ void mascaratestigo(){
     sigfillset(&maskTestigo); //cargamos la mascara con todas las señales
     sigdelset(&maskTestigo,SIGUSR1); //quitamos SIGUSR1
     sigdelset(&maskTestigo,SIGINT); //quitamos SIGINT
-    //tendremos que manejar SIGALARM (de momento no)
-    sigprocmask(SIG_SETMASK,&maskTestigo,NULL);  // activamos la mascara
+    sigdelset(&maskTestigo,SIGALRM); //quitamos SIGALRM
+   // sigprocmask(SIG_SETMASK,&maskTestigo,NULL);  // activamos la mascara
 }
 void funcionTestigo(){
-    //printf("PID pasado: %d\n",pidpasado);
-    while(1){
-        kill(pidDisparo,SIGUSR1);
-        //printf("disparo\n");
-        sigsuspend(&maskTestigo);
-       // printf("NO ESTA BLOQUEADO\n");
-    }
-}
+    kill(pidDisparo,SIGUSR1);
+    //exit(0);
 
+}
+void terminar(){
+    //el padre mata al hijo
+    kill(pid,SIGKILL);
+    printf("HE MATADO AL HIJO\n");
+    printf("TERMINO yo tmbn\n");
+    exit(0);
+}
+void funcionAlarma(){
+    printf("ALARMA, time DONE\n");
+    // Tengo que terminar el juego
+    terminar(); //termino el juego pero solo funciona si le toca justo al padre
+    //si le toca al hijo 
+
+
+}
 //manejadora de SIGALARM
 //manejadora de SIGUSR1
 void manejadoraTestigo(){
-    struct sigaction manejadoraT;
     manejadoraT.sa_handler = &funcionTestigo;
     manejadoraT.sa_flags = SA_RESTART;
     sigaction(SIGUSR1,&manejadoraT,NULL);
 }
 
+void alarmHandler(){
+    manejadoraA.sa_handler = &funcionAlarma;
+    manejadoraA.sa_flags = SA_RESTART;
+    sigaction(SIGALRM,&manejadoraA,NULL);
+}
+
 void codigohijo(pid_t pidpadre) {
-    printf("MAscara del juego ACTIVADA\n");
+
     sigsuspend(&maskTestigo);
-    //printf("PidPADRE: %d\n",pidpadre);
+
     pidDisparo = pidpadre;
-    printf("PID disparo: %d\n",pidDisparo); 
-    funcionTestigo(); //le pasamos el pid del padre
+
+    while(1){
+        //printf("PID disparo: %d\n",pidDisparo); 
+        kill(pidDisparo,SIGUSR1);
+        sigsuspend(&maskTestigo);
+    }
+
 
 }
 
 void codigopadre(pid_t pidhijo) {
     printf("Soy el padre y empiezo el juego de testigos\n");
     pidDisparo = pidhijo;
-    printf("PID disparo: %d\n",pidDisparo); 
-    funcionTestigo(); //le pasamos el pid del hijo
+    alarm(5);
+    while(1){
+       // printf("PID disparo: %d\n",pidDisparo); 
+        printf("VUELTA: %d\n",contador++);
+        //if(contador==10) terminar();
+        kill(pidDisparo,SIGUSR1);
+        sigsuspend(&maskTestigo);
+    }
+
 }
 
 int main() {
     mascarabloqueo(); //Inicialmente esta mascara
+    mascaratestigo(); //mascara para pasar el testigo
     manejadoraTestigo(); //manejadora de SIGUSR1
-    pid_t pid = fork();
-    //aqui el hijo ya esta creado
+    alarmHandler(); //manejadora de SIGALARM
+    sigprocmask(SIG_SETMASK,&maskPadre,NULL);  // activamos la mascara y la hereda el hijo
+ 
+    pid = fork();
+
     if (pid == -1) {
         perror("fork");
         return 1;
