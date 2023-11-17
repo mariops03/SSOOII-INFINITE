@@ -1,9 +1,0 @@
-Comunicacion entre 2 procesos PADRE<->HIJO
-Nada mas crear ponemos una mascara que bloquee todo menos SIGINT
-Creamos el hijo
-Una vez creado le cambiamos la mascara con sigsuspend a otra que bloquee todo como la otra menos la señal testigo
-Comienza el padre que en while(1) hace kill sTestigo y sigsuspend mask2
-y el hijo igual
-BUCLE INFINITO
-una vez tengamos esto ver que sucede con alarm
-en el alarm es una señal TERM, entonces tendremos que crear una manejadora, para que cuando llege SALARM se muera el hijo y despues el padre
