@@ -10,6 +10,7 @@ pid_t H1, H2, N2, H3, N3, H4, H3;
 sigset_t maskPadre;
 sigset_t maskTestigo;
 int pidDisparo;
+int temp = 1;
 struct sigaction manejadoraT;
 struct sigaction manejadoraA;
 struct sigaction terminateHandler;
@@ -37,13 +38,37 @@ void funcionTestigo(){
 }
 void funcionAlarma(){
     //Tengo que matar a todos los procesos
-    printf("ALARMA, time DONE\n");
-    kill(H3,SIGTERM);
+    temp = -1;
+    //printf("ALARMA, time DONE\n");
+    printf("        @@@@@@@@@@@@@@@@                            @@@@@@@@@@@@@@@@@         \n");
+    printf("     @@@@@@@@@@@@@@@@@@@@@@@                    @@@@@@@@@@@@@@@@@@@@@@@@,     \n");
+    printf("   @@@@@@@@@(       @@@@@@@@@@@.             @@@@@@@@@@@         @@@@@@@@@.   \n");
+    printf(" .@@@@@@@                @@@@@@@@@        @@@@@@@@@@                @@@@@@@.  \n");
+    printf(" @@@@@@                     @@@@@@@@@   @@@@@@@@@                     @@@@@@@ \n");
+    printf("@@@@@@                         @@@@@@@@@@@@@@@                        .@@@@@@ \n");
+    printf("@@@@@@                           @@@@@@@@@@@                           @@@@@@ \n");
+    printf("@@@@@@                              %d                              @@@@@@ \n",contador/2);
+    printf("@@@@@@                           @@@@@@@@@@@                           @@@@@@ \n");
+    printf("@@@@@@@                        @@@@@@@@@@@@@@@@                       @@@@@@@ \n");
+    printf(" @@@@@@@                    @@@@@@@@@    @@@@@@@@@                   @@@@@@@  \n");
+    printf("  @@@@@@@@               @@@@@@@@@.        @@@@@@@@@@              @@@@@@@@   \n");
+    printf("    .@@@@@@@@@@*  .&@@@@@@@@@@@&              @@@@@@@@@@@@@&#&@@@@@@@@@@@     \n");
+    printf("       @@@@@@@@@@@@@@@@@@@@@                     &@@@@@@@@@@@@@@@@@@@@@       \n");
+    printf("           @@@@@@@@@@@@                                @@@@@@@@@@@&            \n");
+    //printf("                                     %d\n",contador/2);
+
+
     kill(H1,SIGTERM);
     kill(H2,SIGTERM);
+    kill(H3,SIGTERM);
     kill(H4,SIGTERM);
-    printf("FInalizo como padre");
-    kill(getpid(),SIGKILL);
+    waitpid(H1,NULL,0);
+    waitpid(H2,NULL,0);
+    waitpid(H3,NULL,0);
+    waitpid(H4,NULL,0);
+    //printf("Fin programa\n");
+    exit(0);
+
 }
 void alarmHandler(){
     manejadoraA.sa_handler = &funcionAlarma;
@@ -56,14 +81,19 @@ void manejadoraTestigo(){
     sigaction(SIGUSR1,&manejadoraT,NULL);
 }
 void terminar() {
-    
-    if(N3 > 0){
-        kill(N3,SIGINT);
-    }else if (N2 > 0)
-    {
+
+    if(N2>0){ //aqui entra si soy H2
         kill(N2,SIGINT);
+        waitpid(N2,NULL,0);
+        exit(0);
+    }else if(N3>0){
+        kill(N3,SIGINT);
+        waitpid(N3,NULL,0);
+        exit(0);
     }
-    kill(getpid(), SIGKILL);
+    else{
+        kill(getpid(),SIGINT);
+    }
 }
 void fterminateHandler(){
     terminateHandler.sa_handler = &terminar;
@@ -87,13 +117,13 @@ int main() {
     if (H1 == 0) { 
         /* Child H1 code goes here */
         pidDisparo = getppid();
-        while(1){
+        while(temp){
             sigsuspend(&maskTestigo);
 
         }
     }else if(H4 == 0){ //se la pela
         pidDisparo = getppid();
-        while(1){
+        while(temp){
           sigsuspend(&maskTestigo);
         }
     }
@@ -102,14 +132,14 @@ int main() {
         if (N2 == 0) { 
             /* Grandchild N2 code goes here */
             pidDisparo = H1;
-            while(1){
+            while(temp){
                  sigsuspend(&maskTestigo);
 
             }
         } else if(N2 > 0){ 
             /* Child H2 code goes here */
             pidDisparo = N2; 
-            while(1){
+            while(temp){
                 sigsuspend(&maskTestigo);
 
             }
@@ -122,7 +152,7 @@ int main() {
         if(N3 == 0){
             /* Grandchild N3 code goes here */
             pidDisparo = H4;
-            while(1){
+            while(temp){
               sigsuspend(&maskTestigo);
             }
         }
@@ -130,7 +160,7 @@ int main() {
             /* Child H3 code goes here */
             pidDisparo = N3;
 
-            while(1){
+            while(temp){
 
               sigsuspend(&maskTestigo);
 
@@ -150,11 +180,12 @@ int main() {
         alarm(25);
         pidDisparo = H2;
         kill(pidDisparo,SIGUSR1);
-        while(1){
+        while(temp){
             
             if(contador%2==0){ //si es par
                 pidDisparo = H3;
-                printf("VUELTA: %d\n",contador/2);
+                //system("clear");    
+               
             }else{
                 pidDisparo = H2;
             }
