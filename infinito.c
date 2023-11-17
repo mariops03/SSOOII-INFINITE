@@ -3,10 +3,10 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-//#include <sys/prctl.h>
+#include <signal.h>
 #include <string.h>
 
-pid_t H1, H2, N2, H3, N3, H4, H3;
+pid_t H1, H2, N2, H3, N3, H4;
 sigset_t maskPadre;
 sigset_t maskTestigo;
 int pidDisparo;
@@ -14,40 +14,49 @@ int temp = 1;
 struct sigaction manejadoraT;
 struct sigaction manejadoraA;
 struct sigaction terminateHandler;
-int contador=0;
-void mascarabloqueo(){
+int contador = 0;
 
-    sigfillset(&maskPadre); 
-    sigdelset(&maskPadre,SIGINT); 
-
+void mascarabloqueo() {
+    if (sigfillset(&maskPadre) == -1) {
+        perror("Error en sigfillset");
+        exit(-1);
+    }
+    if (sigdelset(&maskPadre, SIGINT) == -1) {
+        perror("Error en sigdelset");
+        exit(-1);
+    }
 }
 
-void mascaratestigo(){
-
-    sigfillset(&maskTestigo); 
-    sigdelset(&maskTestigo,SIGUSR1); 
-    sigdelset(&maskTestigo,SIGINT); 
-    sigdelset(&maskTestigo,SIGALRM); 
-    sigdelset(&maskTestigo,SIGTERM); 
-    sigdelset(&maskTestigo,SIGKILL);
+void mascaratestigo() {
+    if (sigfillset(&maskTestigo) == -1) {
+        perror("Error en sigfillset");
+        exit(-1);
+    }
+    if (sigdelset(&maskTestigo, SIGUSR1) == -1 || sigdelset(&maskTestigo, SIGINT) == -1 ||
+        sigdelset(&maskTestigo, SIGALRM) == -1 || sigdelset(&maskTestigo, SIGTERM) == -1 ||
+        sigdelset(&maskTestigo, SIGKILL) == -1) {
+        perror("Error en sigdelset");
+        exit(-1);
+    }
 }
-void funcionTestigo(){
 
-    kill(pidDisparo,SIGUSR1);
-
+void funcionTestigo() {
+    if (kill(pidDisparo, SIGUSR1) == -1) {
+        perror("Error en kill");
+        exit(-1);
+    }
 }
-void funcionAlarma(){
-    //Tengo que matar a todos los procesos
+
+void funcionAlarma() {
     temp = -1;
-    //printf("ALARMA, time DONE\n");
     printf("        @@@@@@@@@@@@@@@@                            @@@@@@@@@@@@@@@@@         \n");
     printf("     @@@@@@@@@@@@@@@@@@@@@@@                    @@@@@@@@@@@@@@@@@@@@@@@@,     \n");
     printf("   @@@@@@@@@(       @@@@@@@@@@@.             @@@@@@@@@@@         @@@@@@@@@.   \n");
-    printf(" .@@@@@@@                @@@@@@@@@        @@@@@@@@@@                @@@@@@@.  \n");
-    printf(" @@@@@@                     @@@@@@@@@   @@@@@@@@@                     @@@@@@@ \n");
+    printf(" .@@@@@@@                @@@@@@@@@        @@@@@@@@@@                @@@@@@@@  \n");
+    printf(" @@@@@@                     @@@@@@@@@   @@@@@@@@@                     @@@@@@% \n");
     printf("@@@@@@                         @@@@@@@@@@@@@@@                        .@@@@@@ \n");
-    printf("@@@@@@                           @@@@@@@@@@@                           @@@@@@ \n");
-    printf("@@@@@@                              %d                              @@@@@@ \n",contador/2);
+    printf("@@@@@@                           .@@@@@@@@@@                           @@@@@@ \n");
+    printf("@@@@@@                           %d                             @@@@@@ \n", contador / 2);
     printf("@@@@@@                           @@@@@@@@@@@                           @@@@@@ \n");
     printf("@@@@@@@                        @@@@@@@@@@@@@@@@                       @@@@@@@ \n");
     printf(" @@@@@@@                    @@@@@@@@@    @@@@@@@@@                   @@@@@@@  \n");
@@ -55,142 +64,177 @@ void funcionAlarma(){
     printf("    .@@@@@@@@@@*  .&@@@@@@@@@@@&              @@@@@@@@@@@@@&#&@@@@@@@@@@@     \n");
     printf("       @@@@@@@@@@@@@@@@@@@@@                     &@@@@@@@@@@@@@@@@@@@@@       \n");
     printf("           @@@@@@@@@@@@                                @@@@@@@@@@@&            \n");
-    //printf("                                     %d\n",contador/2);
 
+    if (kill(H1, SIGTERM) == -1) {
+        perror("Error en kill (H1)");
+    }
+    if (kill(H2, SIGTERM) == -1) {
+        perror("Error en kill (H2)");
+    }
+    if (kill(H3, SIGTERM) == -1) {
+        perror("Error en kill (H3)");
+    }
+    if (kill(H4, SIGTERM) == -1) {
+        perror("Error en kill (H4)");
+    }
 
-    kill(H1,SIGTERM);
-    kill(H2,SIGTERM);
-    kill(H3,SIGTERM);
-    kill(H4,SIGTERM);
-    waitpid(H1,NULL,0);
-    waitpid(H2,NULL,0);
-    waitpid(H3,NULL,0);
-    waitpid(H4,NULL,0);
-    //printf("Fin programa\n");
+    waitpid(H1, NULL, 0);
+    waitpid(H2, NULL, 0);
+    waitpid(H3, NULL, 0);
+    waitpid(H4, NULL, 0);
+
     exit(0);
-
 }
-void alarmHandler(){
+
+void alarmHandler() {
     manejadoraA.sa_handler = &funcionAlarma;
     manejadoraA.sa_flags = SA_RESTART;
-    sigaction(SIGALRM,&manejadoraA,NULL);
+    if (sigaction(SIGALRM, &manejadoraA, NULL) == -1) {
+        perror("Error en sigaction (SIGALRM)");
+        exit(-1);
+    }
 }
-void manejadoraTestigo(){
+
+void manejadoraTestigo() {
     manejadoraT.sa_handler = &funcionTestigo;
     manejadoraT.sa_flags = SA_RESTART;
-    sigaction(SIGUSR1,&manejadoraT,NULL);
+    if (sigaction(SIGUSR1, &manejadoraT, NULL) == -1) {
+        perror("Error en sigaction (SIGUSR1)");
+        exit(-1);
+    }
 }
-void terminar() {
 
-    if(N2>0){ //aqui entra si soy H2
-        kill(N2,SIGINT);
-        waitpid(N2,NULL,0);
+void terminar() {
+    if (N2 > 0) { //aqui entra si soy H2
+        if (kill(N2, SIGINT) == -1) {
+            perror("Error en kill (N2)");
+        }
+        waitpid(N2, NULL, 0);
         exit(0);
-    }else if(N3>0){
-        kill(N3,SIGINT);
-        waitpid(N3,NULL,0);
+    } else if (N3 > 0) {
+        if (kill(N3, SIGINT) == -1) {
+            perror("Error en kill (N3)");
+        }
+        waitpid(N3, NULL, 0);
         exit(0);
-    }
-    else{
-        kill(getpid(),SIGINT);
+    } else {
+        if (kill(getpid(), SIGINT) == -1) {
+            perror("Error en kill (padre)");
+        }
     }
 }
-void fterminateHandler(){
+
+void fterminateHandler() {
     terminateHandler.sa_handler = &terminar;
     terminateHandler.sa_flags = SA_RESTART;
-    sigaction(SIGTERM,&terminateHandler,NULL);
+    if (sigaction(SIGTERM, &terminateHandler, NULL) == -1) {
+        perror("Error en sigaction (SIGTERM)");
+        exit(-1);
+    }
 }
+
 int main() {
     mascarabloqueo();
     mascaratestigo();
     manejadoraTestigo();
     alarmHandler();
     fterminateHandler();
-    sigprocmask(SIG_SETMASK,&maskPadre,NULL);  // activamos la mascara y la hereda el hijo
+    if (sigprocmask(SIG_SETMASK, &maskPadre, NULL) == -1) {
+        perror("Error en sigprocmask");
+        exit(-1);
+    }
 
-    //creamos a H1 y H2 a la vez
-    
+    (H1 = fork()) && (H4 = fork()) && (H2 = fork()) && (H3 = fork()); // Creates 4 children
 
-    (H1 = fork()) && (H4 = fork())&& (H2 = fork()) && (H3 = fork()) ; // Creates 4 children
-
-   // sleep(10);
-    if (H1 == 0) { 
+    if (H1 == 0) {
         /* Child H1 code goes here */
         pidDisparo = getppid();
-        while(temp){
-            sigsuspend(&maskTestigo);
-
+        while (temp) {
+            if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
+                perror("Error en sigsuspend (H1)");
+                exit(-1);
+            }
         }
-    }else if(H4 == 0){ //se la pela
+    } else if (H4 == 0) {
+        /* Child H4 code goes here */
         pidDisparo = getppid();
-        while(temp){
-          sigsuspend(&maskTestigo);
+        while (temp) {
+            if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
+                perror("Error en sigsuspend (H4)");
+                exit(-1);
+            }
         }
-    }
-     else if (H2 == 0) {
+    } else if (H2 == 0) {
         N2 = fork();
-        if (N2 == 0) { 
+        if (N2 == 0) {
             /* Grandchild N2 code goes here */
             pidDisparo = H1;
-            while(temp){
-                 sigsuspend(&maskTestigo);
-
+            while (temp) {
+                if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
+                    perror("Error en sigsuspend (N2)");
+                    exit(-1);
+                }
             }
-        } else if(N2 > 0){ 
+        } else if (N2 > 0) {
             /* Child H2 code goes here */
-            pidDisparo = N2; 
-            while(temp){
-                sigsuspend(&maskTestigo);
-
+            pidDisparo = N2;
+            while (temp) {
+                if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
+                    perror("Error en sigsuspend (H2)");
+                    exit(-1);
+                }
             }
-        }else if(N2 == -1){
-            perror("Error en N2");
-            return 1;
+        } else if (N2 == -1) {
+            perror("Error en fork (N2)");
+            exit(-1);
         }
-    } else if(H3 == 0){
+    } else if (H3 == 0) {
         N3 = fork();
-        if(N3 == 0){
+        if (N3 == 0) {
             /* Grandchild N3 code goes here */
             pidDisparo = H4;
-            while(temp){
-              sigsuspend(&maskTestigo);
+            while (temp) {
+                if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
+                    perror("Error en sigsuspend (N3)");
+                    exit(-1);
+                }
             }
-        }
-        else if(N3 > 0){
+        } else if (N3 > 0) {
             /* Child H3 code goes here */
             pidDisparo = N3;
-
-            while(temp){
-
-              sigsuspend(&maskTestigo);
-
+            while (temp) {
+                if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
+                    perror("Error en sigsuspend (H3)");
+                    exit(-1);
+                }
             }
+        } else if (N3 == -1) {
+            perror("Error en fork (N3)");
+            exit(-1);
         }
-        else  if(N3 == -1){
-            perror("Error en N3");
-            return 1;
-        }
-    }
-    else if(H1 == -1 || H2 == -1 || H3 == -1 || H4 == -1){
-        perror("Error en algun H");
-        return 1;
-    }
-    else {
+    } else if (H1 == -1 || H2 == -1 || H3 == -1 || H4 == -1) {
+        perror("Error en algun fork (H)");
+        exit(-1);
+    } else {
         /* Parent code goes here */
         alarm(25);
         pidDisparo = H2;
-        kill(pidDisparo,SIGUSR1);
-        while(temp){
-            
-            if(contador%2==0){ //si es par
+        if (kill(pidDisparo, SIGUSR1) == -1) {
+            perror("Error en kill (H2)");
+            exit(-1);
+        }
+        while (temp) {
+            if (contador % 2 == 0) { //si es par
                 pidDisparo = H3;
-                //system("clear");    
-               
-            }else{
+            } else {
                 pidDisparo = H2;
             }
-            
-            sigsuspend(&maskTestigo);
+
+            if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
+                perror("Error en sigsuspend (padre)");
+                exit(-1);
+            }
+
             contador++;
         }
     }
