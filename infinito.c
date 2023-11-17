@@ -33,8 +33,7 @@ void mascaratestigo() {
         exit(-1);
     }
     if (sigdelset(&maskTestigo, SIGUSR1) == -1 || sigdelset(&maskTestigo, SIGINT) == -1 ||
-        sigdelset(&maskTestigo, SIGALRM) == -1 || sigdelset(&maskTestigo, SIGTERM) == -1 ||
-        sigdelset(&maskTestigo, SIGKILL) == -1) {
+        sigdelset(&maskTestigo, SIGALRM) == -1 || sigdelset(&maskTestigo, SIGTERM) == -1) {
         perror("Error en sigdelset");
         exit(-1);
     }
@@ -150,19 +149,13 @@ int main() {
         /* Child H1 code goes here */
         pidDisparo = getppid();
         while (temp) {
-            if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
-                perror("Error en sigsuspend (H1)");
-                exit(-1);
-            }
+            sigsuspend(&maskTestigo);
         }
     } else if (H4 == 0) {
         /* Child H4 code goes here */
         pidDisparo = getppid();
         while (temp) {
-            if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
-                perror("Error en sigsuspend (H4)");
-                exit(-1);
-            }
+            sigsuspend(&maskTestigo);
         }
     } else if (H2 == 0) {
         N2 = fork();
@@ -170,19 +163,13 @@ int main() {
             /* Grandchild N2 code goes here */
             pidDisparo = H1;
             while (temp) {
-                if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
-                    perror("Error en sigsuspend (N2)");
-                    exit(-1);
-                }
+                sigsuspend(&maskTestigo);
             }
         } else if (N2 > 0) {
             /* Child H2 code goes here */
             pidDisparo = N2;
             while (temp) {
-                if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
-                    perror("Error en sigsuspend (H2)");
-                    exit(-1);
-                }
+                sigsuspend(&maskTestigo);
             }
         } else if (N2 == -1) {
             perror("Error en fork (N2)");
@@ -194,19 +181,13 @@ int main() {
             /* Grandchild N3 code goes here */
             pidDisparo = H4;
             while (temp) {
-                if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
-                    perror("Error en sigsuspend (N3)");
-                    exit(-1);
-                }
+                sigsuspend(&maskTestigo);
             }
         } else if (N3 > 0) {
             /* Child H3 code goes here */
             pidDisparo = N3;
             while (temp) {
-                if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
-                    perror("Error en sigsuspend (H3)");
-                    exit(-1);
-                }
+                sigsuspend(&maskTestigo);
             }
         } else if (N3 == -1) {
             perror("Error en fork (N3)");
@@ -220,7 +201,7 @@ int main() {
         alarm(25);
         pidDisparo = H2;
         if (kill(pidDisparo, SIGUSR1) == -1) {
-            perror("Error en kill (H2)");
+            perror("Error en kill");
             exit(-1);
         }
         while (temp) {
@@ -230,10 +211,7 @@ int main() {
                 pidDisparo = H2;
             }
 
-            if (sigsuspend(&maskTestigo) == -1 && errno != EINTR) {
-                perror("Error en sigsuspend (padre)");
-                exit(-1);
-            }
+            sigsuspend(&maskTestigo);
 
             contador++;
         }
