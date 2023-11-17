@@ -37,7 +37,7 @@ void funcionTestigo(){
 }
 void terminar(){
     //el padre mata al hijo
-    kill(pid,SIGKILL);
+   // kill(pid,SIGKILL);
     printf("HE MATADO AL HIJO\n");
     printf("TERMINO yo tmbn\n");
     exit(0);
@@ -99,7 +99,7 @@ int main() {
     manejadoraTestigo(); //manejadora de SIGUSR1
     alarmHandler(); //manejadora de SIGALARM
     sigprocmask(SIG_SETMASK,&maskPadre,NULL);  // activamos la mascara y la hereda el hijo
- 
+
     pid = fork();
 
     if (pid == -1) {
